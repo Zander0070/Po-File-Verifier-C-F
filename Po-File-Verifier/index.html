@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>PO File Verifier</title>
+
+  <style>
+
+    /* ====== Design Tokens ====== */
+
+    :root {
+
+      --bg: #0b0c0f;
+
+      --panel: #11131a;
+
+      --muted: #a7b0c0;
+
+      --text: #e9ecf1;
+
+      --brand: #4f8cff;
+
+      --brand-weak: color-mix(in oklab, var(--brand) 30%, white);
+
+      --ok: #2ecc71;
+
+      --warn: #ffb020;
+
+      --err: #ff5d5d;
+
+      --border: #242834;
+
+      --chip: #1a1d26;
+
+      --shadow: 0 10px 25px rgba(0,0,0,.35);
+
+      --radius: 16px;
+
+    }
+
+    @media (prefers-color-scheme: light) {
+
+      :root {
+
+        --bg: #f7f8fb;
+
+        --panel: #ffffff;
+
+        --muted: #556177;
+
+        --text: #0c1222;
+
+        --brand: #336dff;
+
+        --brand-weak: color-mix(in oklab, var(--brand) 25%, black);
+
+        --ok: #1a9f5d;
+
+        --warn: #bb7a04;
+
+        --err: #d33e3e;
+
+        --border: #e8ebf2;
+
+        --chip: #f2f5fb;
+
+        --shadow: 0 12px 30px rgba(0, 18, 60, .08);
+
+      }
+
+    }
+
+ 
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+
+      margin: 0; padding: 24px; font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+
+      color: var(--text); background: radial-gradient(1200px 800px at 10% -10%, color-mix(in oklab,var(--brand) 8%, transparent), transparent) no-repeat, var(--bg);
+
+    }
+
+ 
+
+    .app {
+
+      max-width: 1200px; margin: 0 auto; display: grid; gap: 20px;
+
+      grid-template-columns: 1.2fr .8fr;
+
+    }
+
+    @media (max-width: 960px) { .app { grid-template-columns: 1fr; } }
+
+ 
+
+    header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 6px; }
+
+    .title { display:flex; align-items:center; gap: 12px; }
+
+    .logo {
+
+      width: 40px; height: 40px; border-radius: 12px; display:grid; place-items:center; background: linear-gradient(135deg, var(--brand) -10%, color-mix(in oklab,var(--brand) 40%, black)); color: #fff; box-shadow: var(--shadow);
+
+    }
+
+    h1 { font-size: 20px; margin: 0; letter-spacing: .2px; }
+
+    .sub { color: var(--muted); font-size: 13px; }
+
+ 
+
+    .panel { background: var(--panel); border:1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+
+ 
+
+    /* ===== Drop Zone ===== */
+
+    #drop-zone {
+
+      border: 2px dashed color-mix(in oklab, var(--brand) 30%, var(--border));
+
+      border-radius: var(--radius);
+
+      padding: 28px; text-align: center; background: linear-gradient(180deg, color-mix(in oklab, var(--brand) 12%, transparent), transparent 45%)
+
+                  ,linear-gradient(0deg, transparent, color-mix(in oklab, var(--brand) 6%, transparent));
+
+      transition: border-color .2s ease, transform .2s ease, background .2s ease; cursor: pointer;
+
+      position: relative; overflow: clip;
+
+    }
+
+    #drop-zone:hover { transform: translateY(-1px); }
+
+    #drop-zone.dragover { border-color: var(--brand); background: linear-gradient(180deg, color-mix(in oklab, var(--brand) 18%, transparent), transparent 45%); }
+
+    .dz-inner { display:grid; gap: 10px; place-items:center; }
+
+    .dz-icon { width: 42px; height: 42px; opacity:.9; }
+
+    .dz-cta { font-weight: 600; }
+
+    .dz-hint { font-size: 12px; color: var(--muted); }
+
+ 
+
+    .toolbar { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+
+    .btn {
+
+      appearance: none; border:1px solid var(--border); background: var(--chip); color: var(--text);
+
+      padding: 10px 14px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: transform .06s ease, background .2s ease, border-color .2s ease;
+
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+
+    .btn:active { transform: translateY(0); }
+
+    .btn.primary { background: linear-gradient(180deg, var(--brand), color-mix(in oklab,var(--brand) 70%, black)); color: white; border-color: transparent; }
+
+    .btn.ghost { background: transparent; }
+
+    .btn.icon { display:flex; align-items:center; gap:8px; }
+
+ 
+
+    /* ===== Content + Meta ===== */
+
+    .content-card { padding: 16px; display:grid; gap: 12px; }
+
+    #file-meta { display:flex; gap: 10px; flex-wrap: wrap; }
+
+    .chip { background: var(--chip); border:1px solid var(--border); border-radius: 999px; padding: 6px 10px; font-size: 12px; color: var(--muted); }
+
+ 
+
+    #file-content {
+
+      white-space: pre; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+      background: #0d1117; color: #c9d1d9; border-radius: 12px; padding: 14px; height: 560px; width: 100%; overflow: auto; border:1px solid #161b22;
+
+    }
+
+    @media (prefers-color-scheme: light) { #file-content { background: #f4f7fb; color: #0c1222; border-color: #e9eef7; } }
+
+ 
+
+    /* ===== Errors Sidebar ===== */
+
+    #error-sidebar { padding: 16px; position: sticky; top: 16px; max-height: calc(100dvh - 52px); display: grid; gap: 12px; }
+
+    #error-header { display:flex; align-items:center; justify-content:space-between; gap: 10px; }
+
+    .count { display:flex; align-items:center; gap:8px; font-weight: 700; }
+
+    .count.ok { color: var(--ok); }
+
+    .count.warn { color: var(--warn); }
+
+    .count.err { color: var(--err); }
+
+ 
+
+    #error-list { list-style: none; margin: 0; padding: 0; display:grid; gap: 8px; }
+
+    #error-list li { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; line-height: 1.5; border:1px dashed var(--border); background: var(--chip); padding: 10px 12px; border-radius: 10px; }
+
+    #error-list li small { display:block; color: var(--muted); margin-top: 4px; }
+
+ 
+
+    /* ===== Toast ===== */
+
+    .toast { position: fixed; inset-inline: 0; bottom: 16px; display:grid; place-items:center; pointer-events: none; }
+
+    .toast > div { background: var(--panel); color: var(--text); border:1px solid var(--border); padding: 10px 14px; border-radius: 12px; box-shadow: var(--shadow); opacity: 0; transform: translateY(8px); transition: .22s ease; }
+
+    .toast.show > div { opacity:1; transform: translateY(0); }
+
+ 
+
+    /* ===== Helpers ===== */
+
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    .spacer { height: 4px; }
+
+  </style>
+  </head>
+
+  <body>
+     <div class="app">
+
+    <section class="col">
+
+      <header>
+
+        <div class="title">
+
+          <div class="logo" aria-hidden="true">
+
+            <!-- inline logo icon -->
+
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns=http://www.w3.org/2000/svg>
+
+              <path d="M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7Z" fill="white" fill-opacity=".1"/>
+
+              <path d="M7 8h10M7 12h10M7 16h6" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+
+            </svg>
+
+          </div>
+
+          <div>
+
+            <h1>PO File Verifier</h1>
+
+            <div class="sub">Fast, minimal, and friendly. Drop a <code>.po</code> file to inspect & validate.</div>
+
+          </div>
+
+        </div>
+
+        <div class="toolbar">
+
+          
+
+          <button class="btn icon" id="reset-btn" type="button">
+
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4v6h6M20 20v-6h-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 10A8 8 0 0 0 6.34 6.34M4 14a8 8 0 0 0 13.66 3.66" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+
+            Reset
+
+          </button>
+
+          <button class="btn primary icon" id="report-Btn" type="button" style="display:none">
+
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+
+            Send Report
+
+          </button>
+
+        </div>
+
+      </header>
+
+ 
+
+      <div class="panel content-card">
+
+        <label id="drop-zone" for="file-input" tabindex="0" role="button" aria-describedby="dz-hint">
+
+          <input id="file-input" class="sr-only" type="file" accept=".po,text/plain" />
+
+          <div class="dz-inner">
+
+            <svg class="dz-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+
+              <path d="M7 10v7a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+
+              <path d="M12 4v10M8.5 7.5 12 4l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+
+            </svg>
+
+            <div class="dz-cta">Drag & drop your <strong>.po</strong> file, or click to browse</div>
+
+            <div id="dz-hint" class="dz-hint">We auto-reset when a new file is added. No more stale errors.</div>
+
+          </div>
+
+        </label>
+
+ 
+
+        <div id="file-meta" aria-live="polite"></div>
+
+        <div id="file-content" aria-label="File preview" tabindex="0"></div>
+
+      </div>
+
+    </section>
+
+ 
+
+    <aside id="error-sidebar" class="panel" aria-live="polite">
+
+      <div id="error-header">
+
+        <div class="count" id="error-count">No file yet</div>
+
+        <button class="btn ghost" id="copyErrorsBtn" type="button" style="display:none">Copy</button>
+
+      </div>
+
+      <ul id="error-list"></ul>
+
+    </aside>
+
+  </div>
+
+ 
+
+  <div class="toast" id="toast" aria-live="polite" aria-atomic="true"><div></div></div>
+
+    <script>
+      const dropZone = document.getElementById("drop-zone");
+
+      const fileContent = document.getElementById("file-content");
+
+      const resetBtn = document.getElementById("reset-btn");
+
+      const reportBtn = document.getElementById("report-Btn");
+
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+
+        dropZone.style.borderColor = "green";
+      });
+
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.style.borderColor = "#666";
+      });
+
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+
+        dropZone.style.borderColor = "#666";
+
+        const file = e.dataTransfer.files[0];
+
+        if (file) {
+          const reader = new FileReader();
+
+          reader.onload = (e) => {
+            const fileData = e.target.result;
+
+            fileContent.textContent = fileData;
+
+            resetBtn.style.display = "inline-block";
+
+            reportBtn.style.display = "inline-block";
+
+            // --- Validation Logic ---
+
+            const lines = fileData.split("\n");
+
+            let bodyLines = lines.slice(6, lines.length - 2);
+
+            let errors = [];
+
+            bodyLines.forEach((line, index) => {
+              // === UPN Validation (645-659) ===
+
+              let col645_659 = line.slice(644, 659).trim();
+
+              if (!col645_659 || col645_659.length < 15) {
+                let col316_334 = line.slice(315, 333).trim();
+
+                errors.push(`Row ${index + 2} | UPN Issue: ${col316_334}`);
+              }
+
+              // === Inspector Code Validation (492-495) ===
+
+              let col492_495 = line.slice(491, 495).trim();
+
+              if (!col492_495 || col492_495.length < 4) {
+                let col316_334 = line.slice(315, 333).trim();
+
+                errors.push(
+                  `Row ${index + 2} | Inspector Code Issue: ${col316_334}`
+                );
+              }
+            });
+
+            if (errors.length > 0) {
+              document.getElementById("error-sidebar").style.display = "block";
+
+              document.getElementById("error-list").innerHTML = errors
+
+                .map((e) => `<li>${e}</li>`)
+
+                .join("");
+            }
+          };
+
+          reader.readAsText(file);
+        }
+      });
+
+      reportBtn.addEventListener("click", () => {
+        const errors = Array.from(
+          document.querySelectorAll("#error-list li")
+        ).map((li) => li.textContent);
+
+        if (errors.length === 0) return;
+
+        // Always use row 6 (index 5, 0-based) from the full file content
+
+        const allLines = fileContent.textContent.split("\n");
+
+        const row6 = allLines[4] || ""; // row 6
+
+        const col20_31 = row6.slice(19, 31).trim(); // columns 20-31 (0-based index)
+
+        // Draft email
+
+        const subject = "PO File Validation Error Report";
+
+        const body = `Dear ____,
+
+ 
+
+Please note upon receiving (${col20_31}).
+
+ 
+
+We have noticed some missing/Incomplete information. Would you be so kind to forward us a revised PO-file, that excludes the below listed errors:
+
+ 
+
+${errors.join("\n")}
+
+ 
+
+Kind regards,
+
+----------`;
+
+        // Open Outlook draft
+
+        window.location.href = `mailto:?subject=${encodeURIComponent(
+          subject
+        )}&body=${encodeURIComponent(body)}`;
+      });
+
+      resetBtn.addEventListener("click", () => {
+        fileContent.textContent = "";
+
+        resetBtn.style.display = "none";
+
+        document.getElementById("error-sidebar").style.display = "none";
+      });
+    </script>
+  </body>
+</html>
