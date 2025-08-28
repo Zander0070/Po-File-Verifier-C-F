@@ -92,7 +92,7 @@
 
     .app {
 
-      max-width: 1200px; margin: 0 auto; display: grid; gap: 20px;
+      max-width: 1500px; margin: 0 auto; display: grid; gap: 20px;
 
       grid-template-columns: 1.2fr .8fr;
 
@@ -137,10 +137,13 @@
       transition: border-color .2s ease, transform .2s ease, background .2s ease; cursor: pointer;
 
       position: relative; overflow: clip;
+       transition: 0.5s ease-out;
 
     }
 
-    #drop-zone:hover { transform: translateY(-1px); }
+    #drop-zone:hover { transform: translateY(-1px); 
+    box-shadow: 0px 0px 20px rgb(173, 184, 245);
+    transition: 0.5s ease-out;}
 
     #drop-zone.dragover { border-color: var(--brand); background: linear-gradient(180deg, color-mix(in oklab, var(--brand) 18%, transparent), transparent 45%); }
 
@@ -161,10 +164,14 @@
       appearance: none; border:1px solid var(--border); background: var(--chip); color: var(--text);
 
       padding: 10px 14px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: transform .06s ease, background .2s ease, border-color .2s ease;
+      transition: 0.5s ease-out;
 
     }
 
-    .btn:hover { transform: translateY(-1px); }
+    .btn:hover { transform: translateY(-1px); 
+    box-shadow: 0px 0px 20px rgb(173, 184, 245);
+    transition: 0.5s ease-out;
+    }
 
     .btn:active { transform: translateY(0); }
 
@@ -200,7 +207,16 @@
 
     /* ===== Errors Sidebar ===== */
 
-    #error-sidebar { padding: 16px; position: sticky; top: 16px; max-height: calc(100dvh - 52px); display: grid; gap: 12px; }
+  #error-sidebar {
+  padding: 16px;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100dvh - 52px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  
+}
 
     #error-header { display:flex; align-items:center; justify-content:space-between; gap: 10px; }
 
@@ -214,7 +230,15 @@
 
  
 
-    #error-list { list-style: none; margin: 0; padding: 0; display:grid; gap: 8px; }
+    #error-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  overflow-y: auto;
+  max-height: calc(100dvh - 120px);
+}
 
     #error-list li { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 13px; line-height: 1.5; border:1px dashed var(--border); background: var(--chip); padding: 10px 12px; border-radius: 10px; }
 
@@ -423,9 +447,9 @@ dropZone.addEventListener("drop", (e) => {
 
         // === Inspector Code Validation ===
         let col492_495 = line.slice(491, 495).trim();
-        if (!col492_495 || col492_495.length < 4) {
-          palletErrors.push("Inspector Code Missing");
-          document.getElementById(`line-${rowNumber}`).classList.add("error");
+        if ((!col492_495 || col492_495.length < 4) && col492_495 !== "TI") {
+        palletErrors.push("Inspector Code Missing");
+        document.getElementById(`line-${rowNumber}`).classList.add("error");
         }
 
         if (palletErrors.length > 0) {
@@ -481,19 +505,12 @@ dropZone.addEventListener("drop", (e) => {
 
         const body = `Dear ____,
 
- 
-
-Please note upon receiving (${col20_31}).
-
- 
+Please note upon receiving the Po-File for : (${col20_31}).
 
 We have noticed some missing/Incomplete information. Would you be so kind to forward us a revised PO-file, that excludes the below listed errors:
 
  
-
 ${errors.join("\n")}
-
- 
 
 Kind regards,
 
