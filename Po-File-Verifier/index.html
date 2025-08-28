@@ -238,6 +238,17 @@
 
     .spacer { height: 4px; }
 
+.line {
+  white-space: pre;        /* preserves spaces */
+  font-family: monospace;
+  padding: 2px 4px;
+  display: block;          /* ensures full-width highlighting */
+  width: 100%;             /* spans container width */
+}
+.line.error {
+  background-color: rgba(255, 0, 0, 0.4); /* strong red highlight */
+}
+
   </style>
   </head>
 
@@ -357,89 +368,97 @@
   <div class="toast" id="toast" aria-live="polite" aria-atomic="true"><div></div></div>
 
     <script>
-      const dropZone = document.getElementById("drop-zone");
+    const dropZone = document.getElementById("drop-zone");
+const fileContent = document.getElementById("file-content");
+const resetBtn = document.getElementById("reset-btn");
+const reportBtn = document.getElementById("report-Btn");
 
-      const fileContent = document.getElementById("file-content");
+dropZone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropZone.style.borderColor = "green";
+});
 
-      const resetBtn = document.getElementById("reset-btn");
+dropZone.addEventListener("dragleave", () => {
+  dropZone.style.borderColor = "#666";
+});
 
-      const reportBtn = document.getElementById("report-Btn");
+dropZone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropZone.style.borderColor = "#666";
 
-      dropZone.addEventListener("dragover", (e) => {
-        e.preventDefault();
+  const file = e.dataTransfer.files[0];
 
-        dropZone.style.borderColor = "green";
-      });
+  if (file) {
+    const reader = new FileReader();
 
-      dropZone.addEventListener("dragleave", () => {
-        dropZone.style.borderColor = "#666";
-      });
+    reader.onload = (e) => {
+      const fileData = e.target.result;
 
-      dropZone.addEventListener("drop", (e) => {
-        e.preventDefault();
+      // Render file content line by line
+      const lines = fileData.split("\n");
+      fileContent.innerHTML = lines
+        .map((line, i) => `<div id="line-${i}" class="line">${line}</div>`)
+        .join("");
 
-        dropZone.style.borderColor = "#666";
+      resetBtn.style.display = "inline-block";
+      reportBtn.style.display = "inline-block";
 
-        const file = e.dataTransfer.files[0];
+      // --- Validation Logic ---
+      let bodyLines = lines.slice(6, lines.length - 2);
+      let errorMap = {};
 
-        if (file) {
-          const reader = new FileReader();
+      bodyLines.forEach((line, index) => {
+        let rowNumber = index + 6;
+        let palletID = line.slice(315, 333).trim();
+        let sequenceNo = line.slice(25, 26).trim();
+        let uniqueKey = `${palletID} | Seq: ${sequenceNo}`;
+        let palletErrors = [];
 
-          reader.onload = (e) => {
-            const fileData = e.target.result;
+        // === UPN Validation ===
+        let col645_659 = line.slice(644, 659).trim();
+        if (!col645_659 || col645_659.length < 15) {
+          palletErrors.push("UPN Missing");
+          document.getElementById(`line-${rowNumber}`).classList.add("error");
+        }
 
-            fileContent.textContent = fileData;
+        // === Inspector Code Validation ===
+        let col492_495 = line.slice(491, 495).trim();
+        if (!col492_495 || col492_495.length < 4) {
+          palletErrors.push("Inspector Code Missing");
+          document.getElementById(`line-${rowNumber}`).classList.add("error");
+        }
 
-            resetBtn.style.display = "inline-block";
-
-            reportBtn.style.display = "inline-block";
-
-            // --- Validation Logic ---
-
-            const lines = fileData.split("\n");
-
-            let bodyLines = lines.slice(6, lines.length - 2);
-
-            let errors = [];
-
-            bodyLines.forEach((line, index) => {
-              // === UPN Validation (645-659) ===
-
-              let col645_659 = line.slice(644, 659).trim();
-
-              if (!col645_659 || col645_659.length < 15) {
-                let col316_334 = line.slice(315, 333).trim();
-
-                errors.push(`Row ${index + 2} | UPN Issue: ${col316_334}`);
-              }
-
-              // === Inspector Code Validation (492-495) ===
-
-              let col492_495 = line.slice(491, 495).trim();
-
-              if (!col492_495 || col492_495.length < 4) {
-                let col316_334 = line.slice(315, 333).trim();
-
-                errors.push(
-                  `Row ${index + 2} | Inspector Code Issue: ${col316_334}`
-                );
-              }
-            });
-
-            if (errors.length > 0) {
-              document.getElementById("error-sidebar").style.display = "block";
-
-              document.getElementById("error-list").innerHTML = errors
-
-                .map((e) => `<li>${e}</li>`)
-
-                .join("");
-            }
-          };
-
-          reader.readAsText(file);
+        if (palletErrors.length > 0) {
+          if (!errorMap[uniqueKey]) {
+            errorMap[uniqueKey] = [];
+          }
+          errorMap[uniqueKey].push(...palletErrors);
         }
       });
+
+      let errors = Object.entries(errorMap).map(([uniqueKey, issues]) => {
+        return `Pallet: ${uniqueKey} | ${issues.join(", ")}`;
+      });
+
+      if (errors.length > 0) {
+        document.getElementById("error-sidebar").style.display = "block";
+        document.getElementById("error-list").innerHTML = errors
+          .map((e) => `<li>${e}</li>`)
+          .join("");
+      } else {
+        // Clear error report if no errors found
+        document.getElementById("error-sidebar").style.display = "none";
+        document.getElementById("error-list").innerHTML = "";
+      }
+    };
+
+    reader.readAsText(file);
+  }
+});
+
+
+
+
 
       reportBtn.addEventListener("click", () => {
         const errors = Array.from(
